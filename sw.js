@@ -1,7 +1,7 @@
 /* Service worker: офлайн-кэш приложения.
    При любом изменении файлов увеличьте VERSION — старый кэш удалится,
    а пользователи получат новую версию при следующем запуске. */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const CACHE = 'hexcal-' + VERSION;
 const ASSETS = [
   './',

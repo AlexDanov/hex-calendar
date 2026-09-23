@@ -25,12 +25,7 @@
   #msg{margin:6px auto;min-height:22px;color:#9f9;max-width:1100px;font-size:16px}
   #wrap{max-width:880px;margin:0 auto}
   #board{width:100%;height:auto;display:block;margin:0 auto}
-  #piecesBox{background:#e8d9c8;border:1px solid #b9a68f;border-radius:14px;padding:10px;margin:14px auto 0;display:inline-block}
-  #piecesBox h3{margin:4px 0 8px;font-size:14px;color:#5a4632}
-  .prow{display:flex;gap:8px;justify-content:center;margin-bottom:6px}
-  .prow svg{display:block}
   .lbl{font:700 11px system-ui;fill:#222;text-anchor:middle;dominant-baseline:central}
-  .num{font:700 11px system-ui;fill:#222;text-anchor:middle;dominant-baseline:central;opacity:.9}
   .note{color:#aaa;font-size:13px;max-width:1100px;margin:10px auto;text-align:left}
 </style>
 </head>
@@ -45,8 +40,7 @@
 </div>
 <div id="msg"></div>
 <div id="wrap"><svg id="board"></svg></div>
-<div id="piecesBox"><h3>Фишки (контроль форм, нумерация построчно)</h3><div id="pieces"></div></div>
-<p class="note">Фишка на поле и в панели рисуется слитно, чёрная линия — только по внешнему периметру.
+<p class="note">Фишка на поле рисуется слитно, линия — только по внешнему периметру.
 Формы правятся в массиве PIECES (локальные [X,Y]; соседи (X±2,Y) и (X±1,Y±1)).</p>
 <script>
 /* ---------- доска ---------- */
@@ -68,10 +62,10 @@ const N=CELLS.length, UV=CELLS.map(([X,Y])=>[X-Y,2*Y]);
 const IDX=new Map(UV.map((uv,i)=>[uv.join(','),i]));
 /* ---------- фишки ---------- */
 const PIECES=[
- {col:'#2e2e2e',name:'ч5 гантель', cells:[[0,0],[2,0],[1,1],[0,2],[2,2]]},
- {col:'#2e2e2e',name:'ч5 P',       cells:[[0,0],[2,0],[4,0],[1,1],[3,1]]},
- {col:'#2e2e2e',name:'ч4 ромб',    cells:[[0,0],[2,0],[1,1],[3,1]]},
- {col:'#2e2e2e',name:'ч3 трилистник',cells:[[0,0],[2,0],[1,1]]},
+ {col:'#383838',line:'#d8c6ae',name:'ч5 гантель', cells:[[0,0],[2,0],[1,1],[0,2],[2,2]]},
+ {col:'#383838',line:'#d8c6ae',name:'ч5 P',       cells:[[0,0],[2,0],[4,0],[1,1],[3,1]]},
+ {col:'#383838',line:'#d8c6ae',name:'ч4 ромб',    cells:[[0,0],[2,0],[1,1],[3,1]]},
+ {col:'#383838',line:'#d8c6ae',name:'ч3 трилистник',cells:[[0,0],[2,0],[1,1]]},
  {col:'#8f979e',name:'с4 T',       cells:[[0,0],[2,0],[4,0],[3,1]]},
  {col:'#8f979e',name:'с4 3+бок',   cells:[[0,0],[2,0],[4,0],[5,1]]},
  {col:'#8f979e',name:'с4 ромб',    cells:[[0,0],[2,0],[1,1],[3,1]]},
@@ -136,14 +130,14 @@ const DIRS=[[2,0,330,30],[1,1,30,90],[-1,1,90,150],[-2,0,150,210],[-1,-1,210,270
 function vtx(cx,cy,s,a){const r=Math.PI/180*a;return [cx+s*Math.cos(r), cy+s*Math.sin(r)];}
 function hexPath(cx,cy,s){let d='';for(let i=0;i<6;i++){const [x,y]=vtx(cx,cy,s,30+60*i);
   d+=(i?'L':'M')+x.toFixed(1)+','+y.toFixed(1);}return d+'Z';}
-function pieceSVG(cells,s,fill,sw){
+function pieceSVG(cells,s,fill,sw,line='#14161a'){
   const k=Math.sqrt(3)*s/2, set=new Set(cells.map(([X,Y])=>X+','+Y));
   let out='';
   for(const[X,Y]of cells)out+=`<path d="${hexPath(X*k,Y*1.5*s,s)}" fill="${fill}" stroke="none"/>`;
   for(const[X,Y]of cells)for(const[dx,dy,a1,a2]of DIRS){
     if(!set.has((X+dx)+','+(Y+dy))){
       const [x1,y1]=vtx(X*k,Y*1.5*s,s,a1),[x2,y2]=vtx(X*k,Y*1.5*s,s,a2);
-      out+=`<path d="M${x1.toFixed(1)},${y1.toFixed(1)}L${x2.toFixed(1)},${y2.toFixed(1)}" stroke="#14161a" stroke-width="${sw}" fill="none" stroke-linecap="round"/>`;
+      out+=`<path d="M${x1.toFixed(1)},${y1.toFixed(1)}L${x2.toFixed(1)},${y2.toFixed(1)}" stroke="${line}" stroke-width="${sw}" fill="none" stroke-linecap="round"/>`;
     }}
   return out;
 }
@@ -157,9 +151,11 @@ function draw(place,openTexts){
   svg.setAttribute('width',W); svg.setAttribute('height',H);
   let out=`<rect x="${L-M}" y="${T-M}" width="${W}" height="${H}" rx="18" fill="#e8d9c8"/>`;
   if(place){
-    place.forEach((ks,i)=>{ if(!ks)return;
-      out+=pieceSVG(ks.map(k=>CELLS[k]),S,PIECES[i].col,2);
-    });
+    // сначала фишки с тёмным контуром, затем со светлым — чтобы светлый контур был сверху
+    const order=place.map((_,i)=>i).sort((a,b)=>!!PIECES[a].line-!!PIECES[b].line);
+    for(const i of order){ const ks=place[i]; if(!ks)continue;
+      out+=pieceSVG(ks.map(k=>CELLS[k]),S,PIECES[i].col,PIECES[i].line?3:2,PIECES[i].line);
+    }
   }
   for(let i=0;i<N;i++){
     const txt=LABEL[CELLS[i].join(',')];
@@ -169,24 +165,6 @@ function draw(place,openTexts){
     if(isOpen||!place)out+=`<text class="lbl" x="${cx[i]}" y="${cy[i]}">${txt}</text>`;
   }
   svg.innerHTML=out;
-}
-/* ---------- панель фишек с номерами ---------- */
-function drawPieces(){
-  const s=S, k=Math.sqrt(3)*s/2; let html='';
-  for(let row=0;row<4;row++){
-    html+='<div class="prow">';
-    for(let col=0;col<3;col++){
-      const i=row*3+col, p=PIECES[i];
-      const xs=p.cells.map(q=>q[0]*k), ys=p.cells.map(q=>q[1]*1.5*s);
-      const l=Math.min(...xs)-k-5, r=Math.max(...xs)+k+5, t=Math.min(...ys)-s-5, b=Math.max(...ys)+s+5;
-      html+=`<svg viewBox="${l} ${t} ${r-l} ${b-t}" width="${r-l}" height="${b-t}">`+
-        pieceSVG(p.cells,s,p.col,2)+
-        `<text class="num" x="${l+8}" y="${t+8}">${i+1}</text>`+
-        `<title>${i+1}: ${p.name}</title></svg>`;
-    }
-    html+='</div>';
-  }
-  document.getElementById('pieces').innerHTML=html;
 }
 /* ---------- UI ---------- */
 const WD=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'], MO=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
@@ -218,7 +196,6 @@ mS.onchange=()=>{fillDays();syncWD();run();};
 dS.onchange=()=>{syncWD();run();};
 wS.onchange=run;
 document.getElementById('solve').onclick=run;
-drawPieces();
 run();
 /* ---------- PWA: регистрация service worker ---------- */
 if('serviceWorker' in navigator){
